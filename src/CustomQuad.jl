@@ -4,7 +4,7 @@ using QuadGK, DataStructures, LinearAlgebra
 import Base.Order.Reverse
 import QuadGK.Segment
 
-export quadgk_cauchy
+export quadgk_cauchy, quadgk_custom
 export construct_quadrature, segment_quadrature, merge_quadratures
 export segment_length
 
@@ -58,8 +58,9 @@ eval_interval(func, i::NTuple{2,T}) where {T} = QuadGK.evalrule(func, i[1], i[2]
 
 
 quadgk_cauchy(func, a, b, c, points...; kws...) = quadgk_cauchy(func, promote(a,b,c, points...)...; kws...)
+quadgk_custom(func, a, b, points...; kw...) = quadgk_cauchy(func, promote(a, b, points...)...; kws...)
 
-function process_points(a::T, b::T, c::T, points::T...) where {T}
+function process_points_cauchy(a::T, b::T, c::T, points::T...) where {T}
     ordered_points = sort!([a,b, points...])
     m = searchsortedlast(ordered_points, c)
     if c == ordered_points[m]
@@ -83,9 +84,18 @@ function process_points(a::T, b::T, c::T, points::T...) where {T}
     return intervals
 end
 
+function process_points_custom(a::T, b::T, points::T...) where {T}
+    ordered_points = sort!([a,b, points...])
+    intervals = Vector{NTuple{2, T}}()
+    for i = 1:(length(ordered_points)-1)
+        push!(intervals, (ordered_points[i], ordered_points[i+1]))
+    end
+    return intervals
+end
+
 function quadgk_cauchy(func, a::T, b::T, c::T, points::T...; atol = nothing, rtol = nothing, limit = 100) where {T}
     @assert a<c<b
-    intervals = process_points(a, b, c, points...)
+    intervals = process_points_cauchy(a, b, c, points...)
     segs = Union{Segment, RSymSegment}[eval_interval(func, i) for i in intervals]
     I = sum(s -> s.I, segs)
     E = sum(s -> s.E, segs)
@@ -112,7 +122,36 @@ function quadgk_cauchy(func, a::T, b::T, c::T, points::T...; atol = nothing, rto
     return I, E, segs
 end
 
-function update!(segs::Vector{Union{Segment, RSymSegment}}, func)
+function quadgk_custom(func, a::T, b::T, points::T...; atol = nothing, rtol = nothing, limit = 100) where {T}
+    @assert a<b
+    intervals = process_points_custom(a, b, points...)
+    segs = Segment[eval_interval(func, i) for i in intervals]
+    I = sum(s -> s.I, segs)
+    E = sum(s -> s.E, segs)
+
+    n_updates = 0
+    atol_ = something(atol, zero(E))
+    rtol_ = something(rtol, iszero(atol_) ? sqrt(eps(one(T))) : zero(T))
+
+    if (E < atol_) || (E < I*rtol_)
+        return I, E, segs
+    end
+
+
+    heapify!(segs, Reverse)
+    while ((E >= atol_) && (E >= I*rtol_)) && (n_updates<limit)
+        update!(segs, func)
+        I = sum(s -> s.I, segs)
+        E = sum(s -> s.E, segs)
+        n_updates += 1
+    end
+    if ((E >= atol_) && (E >= I*rtol_))
+        @warn "The algorithm was stopped because the limit on updates was surpassed."
+    end
+    return I, E, segs
+end
+
+function update!(segs::Vector{T}, func) where {T<:Union{Segment, Union{Segment, RSymSegment}}}
     s = heappop!(segs, Reverse)
     new_s = divide(func, s)
     for s′ in new_s
