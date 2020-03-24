@@ -177,7 +177,7 @@ end
     return s1, s2, s3
 end
 
-function construct_quadrature(segs::Vector{Union{Segment, RSymSegment}})
+function construct_quadrature(segs::Vector{T}) where {T<:Union{Segment, Union{Segment, RSymSegment}}}
     i = findfirst((x)->(typeof(x)==RSymSegment), segs)
     if !isnothing(i)
         temp = segs[i]
