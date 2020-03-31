@@ -171,7 +171,6 @@ end
     b = s.rsi.b
     mid = (a+b)/2
     s1 = eval_interval(func, RSymInterval(mid, b))
-    print(s1, "\n")
     s2 = eval_interval(func, (a, mid))
     s3 = eval_interval(func, ((3b-a)/2, 2b-a))
     return s1, s2, s3
@@ -184,7 +183,6 @@ function construct_quadrature(segs::Vector{T}) where {T<:Union{Segment, Union{Se
         segs[i] = segs[1]
         segs[1] = temp
     end
-    #return segs
     return map(segment_quadrature, segs) |> merge_quadratures
 end
 
