@@ -98,13 +98,14 @@ function quadgk_cauchy(func, a::T, b::T, c::T, points::T...; atol = nothing, rto
     intervals = process_points_cauchy(a, b, c, points...)
     segs = Union{Segment, RSymSegment}[eval_interval(func, i) for i in intervals]
     I = sum(s -> s.I, segs)
+    I′ = sum(s -> norm(s.I), segs)
     E = sum(s -> s.E, segs)
 
     n_updates = 0
     atol_ = something(atol, zero(E))
     rtol_ = something(rtol, iszero(atol_) ? sqrt(eps(one(T))) : zero(T))
 
-    if (E < atol_) || (E < norm(I)*rtol_)
+    if (E < atol_) || (E < norm(I′)*rtol_)
         return I, E, segs
     end
 
