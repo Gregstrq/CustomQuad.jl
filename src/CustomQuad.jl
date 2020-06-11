@@ -105,19 +105,20 @@ function quadgk_cauchy(func, a::T, b::T, c::T, points::T...; atol = nothing, rto
     atol_ = something(atol, zero(E))
     rtol_ = something(rtol, iszero(atol_) ? sqrt(eps(one(T))) : zero(T))
 
-    if (E < atol_) || (E < norm(I′)*rtol_)
+    if (E < atol_) || (E < I′*rtol_)
         return I, E, segs
     end
 
 
     heapify!(segs, Reverse)
-    while ((E >= atol_) && (E >= norm(I)*rtol_)) && (n_updates<limit)
+    while ((E >= atol_) && (E >= I′*rtol_)) && (n_updates<limit)
         update!(segs, func)
         I = sum(s -> s.I, segs)
+        I′ = sum(s -> norm(s.I), segs)
         E = sum(s -> s.E, segs)
         n_updates += 1
     end
-    if ((E >= atol_) && (E >= norm(I)*rtol_))
+    if ((E >= atol_) && (E >= I′*rtol_))
         @warn "The algorithm was stopped because the limit on updates was surpassed."
     end
     return I, E, segs
@@ -128,25 +129,27 @@ function quadgk_custom(func, a::T, b::T, points::T...; atol = nothing, rtol = no
     intervals = process_points_custom(a, b, points...)
     segs = Segment[eval_interval(func, i) for i in intervals]
     I = sum(s -> s.I, segs)
+    I′ = sum(s -> norm(s.I), segs)
     E = sum(s -> s.E, segs)
 
     n_updates = 0
     atol_ = something(atol, zero(E))
     rtol_ = something(rtol, iszero(atol_) ? sqrt(eps(one(T))) : zero(T))
 
-    if (E < atol_) || (E < norm(I)*rtol_)
+    if (E < atol_) || (E < I′*rtol_)
         return I, E, segs
     end
 
 
     heapify!(segs, Reverse)
-    while ((E >= atol_) && (E >= norm(I)*rtol_)) && (n_updates<limit)
+    while ((E >= atol_) && (E >= I′*rtol_)) && (n_updates<limit)
         update!(segs, func)
         I = sum(s -> s.I, segs)
+        I′ = sum(s -> norm(s.I), segs)
         E = sum(s -> s.E, segs)
         n_updates += 1
     end
-    if ((E >= atol_) && (E >= norm(I)*rtol_))
+    if ((E >= atol_) && (E >= I′*rtol_))
         @warn "The algorithm was stopped because the limit on updates was surpassed."
     end
     return I, E, segs
